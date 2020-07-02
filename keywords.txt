@@ -1,0 +1,34 @@
+#######################################
+# Syntax Coloring Map For Test
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+Test	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+test	KEYWORD2
+reset	KEYWORD2
+full_off	KEYWORD2
+full_on	KEYWORD2
+stopScroll	KEYWORD2
+startScrollDiagRight	KEYWORD2
+startScrollLeft	KEYWORD2
+startScrollRight	KEYWORD2
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+Eliuslab_OLED KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
