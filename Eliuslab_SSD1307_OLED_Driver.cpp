@@ -44,9 +44,6 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
   _GRAM_Page_End = SSD1307_128_32_GRAM_PAGE_END;
   _RAM_Pages = SSD1307_128_32_GRAM_PAGE_END - SSD1307_128_32_GRAM_PAGE_START + 1;
 
-  /* Wait 100mS for DC-DC to stabilise. This can probably be reduced */
-	//delay(100);
-
   /* Set text cursor to top corner */  
 	Cursor(0, 0);
   
@@ -61,6 +58,7 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
 // Functions available in Wiring sketches, this library, and other libraries
 
 void Eliuslab_OLED::begin(void) {
+  Serial.begin(115200);
   SPI.begin();
   reset();
 }
@@ -329,6 +327,7 @@ void Eliuslab_OLED::Refresh(void) {
       Write_data(DisplayBuffer[ColIndex][RowIndex]);
     }
 	}
+  //Serial.print("Display refreshed!");
 }
 
 /* Clears the contents of the output buffer */
@@ -713,10 +712,12 @@ void Eliuslab_OLED::SetFont(const byte *Font) {
 		_FontType = MedProp_11pt;
 		_FontHight = MedProp_11ptFontInfo.CharacterHeight;
 		_FontDescriptor = MedProp_11ptFontInfo.Descriptors;
+    //Serial.print("Selected Font: MedProp_11pt");
 	}else if(Font == LCDLarge_24pt  )
 	{
 		_FontType = LCDLarge_24pt;
 		_FontHight = LCDLarge_24ptFontInfo.CharacterHeight;
 		_FontDescriptor = LCDLarge_24ptFontInfo.Descriptors;
+    //Serial.print("Selected Font: LCDLarge_24pt");
 	}
 }
