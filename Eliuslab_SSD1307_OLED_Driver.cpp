@@ -5,11 +5,9 @@
 
 // include this library's description file
 #include "Eliuslab_SSD1307_OLED_Driver.h"
-#include "fonts.h"
-#include <avr/pgmspace.h>
 
 /* Display output buffer */
-byte DisplayBuffer[BUFFERCOLSIZE][8];
+byte DisplayBuffer[BUFFERCOLSIZE][BUFFERROWSIZE];
 
 
 /* Variables and pointer used by shared static member functions */
@@ -38,7 +36,7 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
   /* Set vertical and horizontal orientation of the display */
 	_V_Ori = 0;
 	_H_Ori = 0;
-
+  
   _Res_Max_X = SSD1307_128_32_RES_X;
   _GRAM_Col_Start = SSD1307_128_32_GRAM_COL_START;
   _GRAM_Col_End = SSD1307_128_32_GRAM_COL_END;
@@ -47,7 +45,7 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
   _RAM_Pages = SSD1307_128_32_GRAM_PAGE_END - SSD1307_128_32_GRAM_PAGE_START + 1;
 
   /* Wait 100mS for DC-DC to stabilise. This can probably be reduced */
-	delay(100);
+	//delay(100);
 
   /* Set text cursor to top corner */  
 	Cursor(0, 0);
@@ -63,7 +61,6 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
 // Functions available in Wiring sketches, this library, and other libraries
 
 void Eliuslab_OLED::begin(void) {
-  digitalWrite(dcPin, LOW); // Set display data mode pin
   SPI.begin();
   reset();
 }
@@ -96,15 +93,16 @@ void Eliuslab_OLED::Initial_SSD1307ZD(void) {
 }
 
 void Eliuslab_OLED::reset(void) {
+  digitalWrite(dcPin, LOW); // Set display data mode pin
   digitalWrite(rstPin, HIGH);
   delay(10);
   digitalWrite(rstPin, LOW);
   delay(100);
   digitalWrite(rstPin, HIGH);
-
-  delay(10);
+  delay(50);
+  
   Initial_SSD1307ZD();
-
+  delay(100);
   /* Clear the display buffer */
 	ClearBuffer();
   /* Output the display buffer to clear the display RAM */
@@ -114,7 +112,7 @@ void Eliuslab_OLED::reset(void) {
 	Flip_V();	*/
 }
 
-void Eliuslab_OLED::Write_command(unsigned char command) {
+void Eliuslab_OLED::Write_command(byte command) {
   //unsigned char bMask;
   // take the SS pin low to select the chip:
   digitalWrite(ssPin, LOW);
@@ -129,11 +127,12 @@ void Eliuslab_OLED::Write_command(unsigned char command) {
   digitalWrite(dcPin, HIGH);
 }
 
-void Eliuslab_OLED::Write_data(unsigned char data) {
+void Eliuslab_OLED::Write_data(byte data) {
   //unsigned char bMask;
   // take the SS pin low to select the chip:
   digitalWrite(ssPin, LOW);
   digitalWrite(dcPin, HIGH);
+
   SPI.beginTransaction(SPI_SETTINGS);
   SPI.transfer(data);
   SPI.endTransaction();
@@ -190,7 +189,7 @@ void Eliuslab_OLED::stopScroll(void) {
 
 void Eliuslab_OLED::full_on() {
   unsigned char x, y, Z = 0xb0;
-  for (x = 0; x < SSD1307_128_32_GRAM_PAGE_END; x++)
+  for (x = 0; x <= SSD1307_128_32_GRAM_PAGE_END; x++)
   {
     Write_command(Z);
     Z++;
@@ -205,7 +204,7 @@ void Eliuslab_OLED::full_on() {
 
 void Eliuslab_OLED::full_off() {
   unsigned char x, y, Z = 0xb0;
-  for (x = 0; x < SSD1307_128_32_GRAM_PAGE_END; x++)
+  for (x = 0; x <= SSD1307_128_32_GRAM_PAGE_END; x++)
   {
     Write_command(Z);
     Z++;
@@ -220,7 +219,7 @@ void Eliuslab_OLED::full_off() {
 
 void Eliuslab_OLED::test(void) {
   //=====================================================================================
-  /*unsigned char testBitmap[4][128] = { //Position(coordinate)
+  const PROGMEM unsigned char testBitmap[4][128] = { //Position(coordinate)
     0xFF, 0x11, 0x01, 0x01, 0x03, 0x01, 0x41, 0x81,
     0x41, 0x8F, 0x41, 0x81, 0x41, 0x81, 0x43, 0x81,
     0x41, 0x81, 0x41, 0x8F, 0x41, 0x81, 0x41, 0x81,
@@ -298,7 +297,7 @@ void Eliuslab_OLED::test(void) {
     {
       Write_data(testBitmap[x][y]);
     }
-  }*/
+  }
 }
 
 /* Writes the contents of the display buffer to the display */
@@ -317,9 +316,13 @@ void Eliuslab_OLED::Refresh(void) {
   Write_command(_GRAM_Page_Start);
   Write_command(_GRAM_Page_End);
     	
-		
+	byte Z = PAGEADD;
 	for (RowIndex = 0; RowIndex < _RAM_Pages; RowIndex++)
 	{
+    Write_command(Z);
+    Z++;
+    Write_command(0x10);
+    Write_command(0x00);
     /* Write to display RAM */
     for (ColIndex = 0; ColIndex < _Res_Max_X; ColIndex++)
     {
@@ -333,7 +336,7 @@ void Eliuslab_OLED::ClearBuffer(void) {
 	byte ColIndex;
 	byte RowIndex;
 
-	for (RowIndex = 0; RowIndex < 8; RowIndex++)
+	for (RowIndex = 0; RowIndex < BUFFERROWSIZE; RowIndex++)
 	{    
 		for (ColIndex = 0; ColIndex < BUFFERCOLSIZE; ColIndex++)
 		{

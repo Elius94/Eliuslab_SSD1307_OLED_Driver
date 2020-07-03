@@ -1,6 +1,7 @@
 #ifndef fonts_h
 #define fonts_h
 #include "Arduino.h"
+#include <avr/pgmspace.h>
 
 
 typedef struct _font_info 

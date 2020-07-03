@@ -8,6 +8,7 @@
 #define Test_h
 
 #include <SPI.h>
+#include "fonts.h"
 
 extern const PROGMEM byte Terminal_8pt[];
 extern const PROGMEM byte MedProp_11pt[];
@@ -49,13 +50,13 @@ extern const PROGMEM byte LCDLarge_24pt[];
 #define SSD1307_128_32_GRAM_COL_START 0x00
 #define SSD1307_128_32_GRAM_COL_END 0x7F
 #define SSD1307_128_32_GRAM_PAGE_START 0
-#define SSD1307_128_32_GRAM_PAGE_END 4
+#define SSD1307_128_32_GRAM_PAGE_END 3
 
 #define SPI_SETTINGS SPISettings(8000000, MSBFIRST, SPI_MODE0)
 
 /* Display resolution */
 #define BUFFERCOLSIZE 128
-#define BUFFERROWSIZE 8
+#define BUFFERROWSIZE 4
 
 /* Display command register addresses */
 #define COLLOWADD 0x00
@@ -131,12 +132,12 @@ class Eliuslab_OLED
     uint8_t width, height;
     uint8_t ssPin, dcPin, rstPin;
     void Initial_SSD1307ZD(void);
-    void Write_command(unsigned char command);
-    void Write_data(unsigned char data);
-    unsigned char testBitmap[4][128];
+    void Write_command(byte command);
+    void Write_data(byte data);
+    //unsigned char testBitmap[4][128];
     static void _WriteChar(char character);
-    boolean _V_Ori;
-    boolean _H_Ori;
+    bool _V_Ori;
+    bool _H_Ori;
     static byte _XPos;
     static byte _YPos;
     static const byte *_FontType;
