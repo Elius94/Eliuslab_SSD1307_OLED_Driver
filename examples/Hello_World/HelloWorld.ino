@@ -13,12 +13,23 @@ Eliuslab_OLED OLED(OLED_WIDTH, OLED_HEIGHT, CS_PIN, DC_PIN, RST_PIN);
 void setup() {
   pinMode(SERVICE_LED, OUTPUT);
   OLED.begin(); //Init the OLED
-  //OLED.test(); //Load a test image
+  Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  OLED.Print("Ciao");
-  OLED.full_on();
-  for(;;){}
+  //OLED.test();
+  /* Display some text using a large 4 line LCD style font */
+  OLED.Cursor(20,0);
+  OLED.SetFont(LCDLarge_24pt);
+  OLED.Print("Ciao KORISS! <3");
+  
+
+  /*OLED.Rect(21,25,32,31, SOLID);
+  OLED.Rect(96,25,107,31, SOLID);*/
+  OLED.Refresh();
+  OLED.startScrollLeft(0,0x0f);
+
+  Serial.println("Ciao");
+  while(1){}
 }

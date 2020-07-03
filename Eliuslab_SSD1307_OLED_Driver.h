@@ -1,6 +1,6 @@
 /*
-  Test.h - Test library for Wiring - description
-  Copyright (c) 2006 John Doe.  All right reserved.
+  Eliuslab_SSD1307_OLED_Driver.h - Eliuslab_SSD1307_OLED_Driver library for ATMEGA328P - implementation
+  Copyright (c) 2020 Elia Lazzari.  All right reserved.
 */
 
 // ensure this library description is only included once
