@@ -9,7 +9,6 @@
 /* Display output buffer */
 byte DisplayBuffer[BUFFERCOLSIZE][BUFFERROWSIZE];
 
-
 /* Variables and pointer used by shared static member functions */
 byte Eliuslab_OLED::_XPos;
 byte Eliuslab_OLED::_YPos;
@@ -28,6 +27,8 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
   ssPin = _ssPin;
   dcPin = _dcPin;
   rstPin = _rstPin;
+
+  BufferStartOffset = 0;
   
   pinMode(ssPin, OUTPUT);
   pinMode(dcPin, OUTPUT);
@@ -48,7 +49,7 @@ Eliuslab_OLED::Eliuslab_OLED(uint8_t _width, uint8_t _height, uint8_t _ssPin, ui
 	Cursor(0, 0);
   
 	/* Set default font */
-	SetFont(Terminal_8pt);  
+	SetFont(_Terminal_8pt);  
   
 	/* Set default draw mode */
 	DrawMode(NORMAL);
@@ -701,23 +702,29 @@ void Eliuslab_OLED::_WriteChar(char character) {
    Terminal_8pt (A small 8x8 fixed width font)
    MedProp_11pt (A medium two row proportional font)
    LCDLarge_24pt (A large 4 row LCD style font) */
-void Eliuslab_OLED::SetFont(const byte *Font) {
-	if(Font == Terminal_8pt)
+void Eliuslab_OLED::SetFont(uint8_t font_name) {
+	if(font_name == _Terminal_8pt)
 	{
 		_FontType = Terminal_8pt;
 		_FontHight = Terminal_8ptFontInfo.CharacterHeight;
 		_FontDescriptor = Terminal_8ptFontInfo.Descriptors;
-	}else if(Font == MedProp_11pt)
+	}else if(font_name == _MedProp_11pt)
 	{
 		_FontType = MedProp_11pt;
 		_FontHight = MedProp_11ptFontInfo.CharacterHeight;
 		_FontDescriptor = MedProp_11ptFontInfo.Descriptors;
     //Serial.print("Selected Font: MedProp_11pt");
-	}else if(Font == LCDLarge_24pt  )
+	}else if(font_name == _LCDLarge_24pt  )
 	{
 		_FontType = LCDLarge_24pt;
 		_FontHight = LCDLarge_24ptFontInfo.CharacterHeight;
 		_FontDescriptor = LCDLarge_24ptFontInfo.Descriptors;
+    //Serial.print("Selected Font: LCDLarge_24pt");
+	}else if(font_name == _LargeProp_25pt  )
+	{
+		_FontType = LargeProp_25pt;
+		_FontHight = LargeProp_25ptFontInfo.CharacterHeight;
+		_FontDescriptor = LargeProp_25ptFontInfo.Descriptors;
     //Serial.print("Selected Font: LCDLarge_24pt");
 	}
 }

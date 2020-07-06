@@ -8,11 +8,21 @@
 #define Test_h
 
 #include <SPI.h>
-#include "fonts.h"
+#include "fonts/fonts.h"
 
 extern const PROGMEM byte Terminal_8pt[];
 extern const PROGMEM byte MedProp_11pt[];
+extern const PROGMEM byte LargeProp_25pt[];
 extern const PROGMEM byte LCDLarge_24pt[];
+
+/* Various fonts */
+enum fontName
+{
+	_Terminal_8pt  = 1,
+	_MedProp_11pt  = 2,
+	_LargeProp_25pt = 3,
+	_LCDLarge_24pt = 4
+};
 
 // Display Settings
 #define SSD1307_DISPLAY_OFF 0xAE // Display Off
@@ -107,6 +117,7 @@ class Eliuslab_OLED
     void full_off(void);
     void reset(void);
     void test(void);
+    byte BufferStartOffset;
 
     // DRAWING FUNCTIONS
     void Refresh(void);
@@ -120,7 +131,7 @@ class Eliuslab_OLED
     static void Print(long Value);
     static void Print(int long Value, byte DecimalPlaces);
     static void Print(float value, byte digits, byte DecimalPlaces);
-    static void SetFont(const byte *Font);
+    static void SetFont(uint8_t font_name);
     static void Plot(uint8_t X, uint8_t Y);
     static void Line(uint8_t X1, uint8_t Y1, uint8_t X2, uint8_t Y2);
     static void Rect(uint8_t X1, uint8_t Y1, uint8_t X2, uint8_t Y2, uint8_t FillMode);
