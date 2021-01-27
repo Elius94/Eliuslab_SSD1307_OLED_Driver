@@ -17,6 +17,7 @@
 #define EEPROM_SETTINGS_ACTIVE_NAMES      502
 #define EEPROM_SETTINGS_SCROLLING         503
 #define EEPROM_SETTINGS_SHOW_BITMAP       504
+#define EEPROM_SETTINGS_ROLL_MODE         505
 #define EEPROM_BITMAP_ADDRESS             510
 
 // I2C Commands
@@ -29,12 +30,14 @@
 #define I2C_MASTER_COMMAND_RUN_TEST               0x16
 #define I2C_MASTER_COMMAND_SET_SHOW_BITMAP        0x17
 #define I2C_MASTER_COMMAND_SET_BITMAP             0x18
+#define I2C_MASTER_COMMAND_SET_ROLL_MODE          0x19 // Concat all active names into one big String and virtually start scroll
 
 bool default_twoRows = false;
 int default_changeInterval = 1000;
 byte default_activeNames = MAX_NAMES;
 bool default_scrolling = false;
 bool default_showBitmap = false;
+bool default_rollMode = false;
 
 uint16_t nameEEPROMAddress[MAX_NAMES] = { 0, 50, 100, 150, 200, 250, 300, 350, 400, 450 };
 String default_names[MAX_NAMES] = {"Nome 1", "Nome 2", "Nome 3", "Nome 4", "Nome 5", "Nome 6", "Nome 7", "Nome 8", "Nome 9", "Nome 10"};
@@ -45,6 +48,7 @@ int changeInterval;
 byte activeNames;
 bool scrolling;
 bool showBitmap;
+bool rollMode;
 bool updating = false;
 bool updating_ctrl = false;
 
@@ -53,7 +57,8 @@ enum settings {
   SETTINGS_CHANGE_INTERVAL,
   SETTINGS_ACTIVE_NAMES,
   SETTINGS_SCROLLING,
-  SETTINGS_SHOW_BITMAP
+  SETTINGS_SHOW_BITMAP,
+  SETTINGS_ROLL_MODE
 };
 
 Eliuslab_OLED OLED(OLED_WIDTH, OLED_HEIGHT, CS_PIN, DC_PIN, RST_PIN);
@@ -91,6 +96,7 @@ void resetSettings() {
   EEPROM.write(EEPROM_SETTINGS_ACTIVE_NAMES, default_activeNames);
   EEPROM.write(EEPROM_SETTINGS_SCROLLING, default_scrolling);
   EEPROM.write(EEPROM_SETTINGS_SHOW_BITMAP, default_showBitmap);
+  EEPROM.write(EEPROM_SETTINGS_ROLL_MODE, default_rollMode);
 }
 
 void resetBitmap() {
@@ -110,6 +116,7 @@ void initSettings() {
   activeNames = EEPROM.read(EEPROM_SETTINGS_ACTIVE_NAMES);
   scrolling = EEPROM.read(EEPROM_SETTINGS_SCROLLING);
   showBitmap = EEPROM.read(EEPROM_SETTINGS_SHOW_BITMAP);
+  rollMode = EEPROM.read(EEPROM_SETTINGS_ROLL_MODE);
 }
 
 void initMemory(bool _reset = false) {
@@ -175,6 +182,14 @@ bool changeSetting(settings setting, int value, bool save = false) {
         return true;
       }
       break;
+    case SETTINGS_ROLL_MODE: {
+      rollMode = (bool)value;
+      if (save) {
+        EEPROM.write(EEPROM_SETTINGS_ROLL_MODE, value);
+      }
+      return true;
+    }
+    break;
     default:
       break;
   }
@@ -208,7 +223,11 @@ void loop() {
         printUpdateScreen();
       }
     } else {
-      horizontalSequence(twoRows, names, showBitmap, changeInterval);
+      if (rollMode) {
+        printRollMode(names, showBitmap, changeInterval);
+      } else {
+        horizontalSequence(twoRows, names, showBitmap, changeInterval);
+      }
     }
   }
 }
@@ -220,6 +239,45 @@ void printUpdateScreen() {
   OLED.Print("UPDATE ");
   OLED.Refresh();
   OLED.startScrollLeft(0, 0x0f);
+}
+
+void printRollMode(String names[], bool drawBitmap, int waitFor) {
+  if (drawBitmap) {
+    if (updating) {
+      return; 
+    }
+    OLED.ClearBuffer();
+    OLED.PrintBitmapFromEEPROM(EEPROM_BITMAP_ADDRESS);
+    if (scrolling) {
+      OLED.startScrollLeft(0, 0x0f);
+    } else {
+      OLED.stopScroll();
+    }
+    delay(waitFor * 10);
+  }
+  String text = "";
+  String spacer = "  ";
+  for (int i = 0; i < activeNames; ++i) {
+    text.concat(names[i] + spacer);
+  }
+
+  byte maxChars = 10;
+  OLED.SetFont(_LargeProp_25pt);
+
+  for (int from=0; from<text.length() - maxChars; ++from) {
+    if (updating) {
+      return; 
+    }
+    String sliced = text.substring(from, from + maxChars);
+    int str_len = sliced.length() + 1;
+    char slice[str_len];
+    sliced.toCharArray(slice, str_len);
+    OLED.ClearBuffer();
+    OLED.Cursor(0, 4);
+    OLED.Print(slice);
+    OLED.Refresh();
+    delay(waitFor);
+  }
 }
 
 void horizontalSequence(bool twoRows, String names[], bool drawBitmap, int waitFor) {
@@ -380,6 +438,13 @@ void receiveEvent(int howMany)
               writeBitmapToEEPROMSliced(page, counter, (byte)Wire.read());
               counter++;
             }
+          }
+        }
+        break;
+      case I2C_MASTER_COMMAND_SET_ROLL_MODE: {
+          if (Wire.available()) {
+            bool value = (bool)Wire.read();
+            changeSetting(SETTINGS_ROLL_MODE, value, saveToEEPROM);
           }
         }
         break;
