@@ -6,6 +6,7 @@
 #define DC_PIN 8
 #define RST_PIN 9
 #define SERVICE_LED 14
+#define ENABLE_PIN PIN_PD2
 
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 32
@@ -31,6 +32,7 @@
 #define I2C_MASTER_COMMAND_SET_SHOW_BITMAP        0x17
 #define I2C_MASTER_COMMAND_SET_BITMAP             0x18
 #define I2C_MASTER_COMMAND_SET_ROLL_MODE          0x19 // Concat all active names into one big String and virtually start scroll
+#define I2C_MASTER_COMMAND_HARD_RESET             0xDD
 
 bool default_twoRows = false;
 int default_changeInterval = 1000;
@@ -51,6 +53,7 @@ bool showBitmap;
 bool rollMode;
 bool updating = false;
 bool updating_ctrl = false;
+bool enabled = true;
 
 enum settings {
   SETTINGS_TWOROWS,
@@ -183,29 +186,39 @@ bool changeSetting(settings setting, int value, bool save = false) {
       }
       break;
     case SETTINGS_ROLL_MODE: {
-      rollMode = (bool)value;
-      if (save) {
-        EEPROM.write(EEPROM_SETTINGS_ROLL_MODE, value);
+        rollMode = (bool)value;
+        if (save) {
+          EEPROM.write(EEPROM_SETTINGS_ROLL_MODE, value);
+        }
+        return true;
       }
-      return true;
-    }
-    break;
+      break;
     default:
       break;
   }
   return false;
 }
 
+void blinkServiceLed() {
+  digitalWrite(SERVICE_LED, HIGH);
+  digitalWrite(SERVICE_LED, LOW);
+}
+
 void setup() {
   delay(1000);
   //Serial.begin(9600);
-  delay(500);
+  //delay(500);
   pinMode(SERVICE_LED, OUTPUT);
+  pinMode(ENABLE_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(ENABLE_PIN), handleEnablePin, CHANGE);
+  digitalWrite(SERVICE_LED, HIGH);
   OLED.begin(); //Init the OLED
   delay(500);
   initMemory(false); // true for init EEPROM
   Wire.begin(4);                // join i2c bus with address #4
   Wire.onReceive(receiveEvent); // register event
+  delay(500);
+  digitalWrite(SERVICE_LED, LOW);
 }
 
 void loop() {
@@ -221,14 +234,32 @@ void loop() {
       if (updating_ctrl) {
         updating_ctrl = false;
         printUpdateScreen();
+        blinkServiceLed();
       }
     } else {
-      if (rollMode) {
-        printRollMode(names, showBitmap, changeInterval);
+      if (enabled) {
+        if (rollMode) {
+          printRollMode(names, showBitmap, changeInterval);
+        } else {
+          horizontalSequence(twoRows, names, showBitmap, changeInterval);
+        }
       } else {
-        horizontalSequence(twoRows, names, showBitmap, changeInterval);
+        disableDisplay();
       }
     }
+  }
+}
+
+void disableDisplay() {
+  OLED.ClearBuffer();
+  OLED.full_off();
+}
+
+void handleEnablePin() {
+  if (digitalRead(ENABLE_PIN) == HIGH) {
+    enabled = true;
+  } else {
+    enabled = false;
   }
 }
 
@@ -243,8 +274,8 @@ void printUpdateScreen() {
 
 void printRollMode(String names[], bool drawBitmap, int waitFor) {
   if (drawBitmap) {
-    if (updating) {
-      return; 
+    if (updating || enabled == false) {
+      return;
     }
     OLED.ClearBuffer();
     OLED.PrintBitmapFromEEPROM(EEPROM_BITMAP_ADDRESS);
@@ -264,9 +295,9 @@ void printRollMode(String names[], bool drawBitmap, int waitFor) {
   byte maxChars = 10;
   OLED.SetFont(_LargeProp_25pt);
 
-  for (int from=0; from<text.length() - maxChars; ++from) {
-    if (updating) {
-      return; 
+  for (int from = 0; from < text.length() - maxChars; ++from) {
+    if (updating || enabled == false) {
+      return;
     }
     String sliced = text.substring(from, from + maxChars);
     int str_len = sliced.length() + 1;
@@ -282,8 +313,8 @@ void printRollMode(String names[], bool drawBitmap, int waitFor) {
 
 void horizontalSequence(bool twoRows, String names[], bool drawBitmap, int waitFor) {
   if (drawBitmap) {
-    if (updating) {
-      return; 
+    if (updating || enabled == false) {
+      return;
     }
     OLED.ClearBuffer();
     OLED.PrintBitmapFromEEPROM(EEPROM_BITMAP_ADDRESS);
@@ -297,8 +328,8 @@ void horizontalSequence(bool twoRows, String names[], bool drawBitmap, int waitF
   if (twoRows) {
     OLED.SetFont(_MedProp_11pt);
     for (int i = 0; i < activeNames; i = i + 2) {
-      if (updating) {
-        return; 
+      if (updating || enabled == false) {
+        return;
       }
       OLED.ClearBuffer();
       int str_len_1 = names[i].length() + 1;
@@ -322,8 +353,8 @@ void horizontalSequence(bool twoRows, String names[], bool drawBitmap, int waitF
   } else {
     OLED.SetFont(_LargeProp_25pt);
     for (int i = 0; i < activeNames; ++i) {
-      if (updating) {
-        return; 
+      if (updating || enabled == false) {
+        return;
       }
       int str_len = names[i].length() + 1;
       char _name[str_len];
@@ -358,6 +389,7 @@ void oledPrintF(String intput) {
 void receiveEvent(int howMany)
 {
   //oledPrintF("Incoming: " + (String)howMany);
+  blinkServiceLed();
   bool saveToEEPROM = true; // set true to store value to EEPROM
   if (Wire.available()) { // loop through all but the last
     byte command = Wire.read(); // receive byte as a character
@@ -366,8 +398,10 @@ void receiveEvent(int howMany)
           byte number;
           String value = "";
           if (Wire.available()) {
+            blinkServiceLed();
             number = Wire.read();
             while (Wire.available()) {
+              blinkServiceLed();
               value.concat((char)Wire.read());
             }
             changeName(number, value, saveToEEPROM);
@@ -376,6 +410,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_TWOROWS: {
           if (Wire.available()) {
+            blinkServiceLed();
             bool value = (bool)Wire.read();
             changeSetting(SETTINGS_TWOROWS, value, saveToEEPROM);
           }
@@ -383,6 +418,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_CHANGE_INTERVAL: {
           if (Wire.available()) {
+            blinkServiceLed();
             uint16_t value = Wire.read() * 100;
             //oledPrintF("Value: " + (String)value);
             Serial.printf("Change interval: %d", value);
@@ -392,6 +428,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_ACTIVE_NAMES: {
           if (Wire.available()) {
+            blinkServiceLed();
             byte value = Wire.read();
             if (value <= 10) {
               changeSetting(SETTINGS_ACTIVE_NAMES, value, saveToEEPROM);
@@ -401,6 +438,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_SCROLLING: {
           if (Wire.available()) {
+            blinkServiceLed();
             bool value = (bool)Wire.read();
             changeSetting(SETTINGS_SCROLLING, value, saveToEEPROM);
           }
@@ -408,6 +446,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_UPDATING: {
           if (Wire.available()) {
+            blinkServiceLed();
             bool value = (bool)Wire.read();
             if (value) {
               printUpdateScreen();
@@ -425,6 +464,7 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_SHOW_BITMAP: {
           if (Wire.available()) {
+            blinkServiceLed();
             bool value = (bool)Wire.read();
             changeSetting(SETTINGS_SHOW_BITMAP, value, saveToEEPROM);
           }
@@ -432,9 +472,11 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_BITMAP: {
           if (Wire.available() == 17) {
+            blinkServiceLed();
             uint8_t page = (byte)Wire.read();
             uint8_t counter = 0;
             while (Wire.available()) {
+              blinkServiceLed();
               writeBitmapToEEPROMSliced(page, counter, (byte)Wire.read());
               counter++;
             }
@@ -443,8 +485,19 @@ void receiveEvent(int howMany)
         break;
       case I2C_MASTER_COMMAND_SET_ROLL_MODE: {
           if (Wire.available()) {
+            blinkServiceLed();
             bool value = (bool)Wire.read();
             changeSetting(SETTINGS_ROLL_MODE, value, saveToEEPROM);
+          }
+        }
+        break;
+      case I2C_MASTER_COMMAND_HARD_RESET: {
+          if (Wire.available()) {
+            blinkServiceLed();
+            bool check = (bool)Wire.read();
+            if (check) {
+              initMemory(true);
+            }
           }
         }
         break;
