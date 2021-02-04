@@ -2,6 +2,9 @@
 #include <Wire.h>
 #include <EEPROM.h>
 
+// I2C ADDRESS HERE
+#define I2C_ADDRESS 3
+
 #define CS_PIN 10
 #define DC_PIN 8
 #define RST_PIN 9
@@ -215,7 +218,7 @@ void setup() {
   OLED.begin(); //Init the OLED
   delay(500);
   initMemory(false); // true for init EEPROM
-  Wire.begin(4);                // join i2c bus with address #4
+  Wire.begin(I2C_ADDRESS);                // join i2c bus with address #4
   Wire.onReceive(receiveEvent); // register event
   delay(500);
   digitalWrite(SERVICE_LED, LOW);
@@ -295,7 +298,7 @@ void printRollMode(String names[], bool drawBitmap, int waitFor) {
   byte maxChars = 10;
   OLED.SetFont(_LargeProp_25pt);
 
-  for (int from = 0; from < text.length() - maxChars; ++from) {
+  for (int from = 0; from < text.length() - (maxChars - 1); ++from) {
     if (updating || enabled == false) {
       return;
     }
@@ -309,6 +312,7 @@ void printRollMode(String names[], bool drawBitmap, int waitFor) {
     OLED.Refresh();
     delay(waitFor);
   }
+  delay(waitFor * 10);
 }
 
 void horizontalSequence(bool twoRows, String names[], bool drawBitmap, int waitFor) {
